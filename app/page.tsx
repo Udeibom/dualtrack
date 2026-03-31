@@ -225,6 +225,29 @@ Waste: ${(categories.waste / 60).toFixed(1)}h.
     loadDashboard();
   }, [user, loading, loadDashboard]);
 
+  // ✅ Landing/Auth Screen
+  if (!user && !loading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen gap-4">
+        <h1 className="text-3xl font-bold">Welcome to DualTrack</h1>
+
+        <p className="text-gray-500 text-sm">
+          Track your time. Stay accountable. Grow together.
+        </p>
+
+        <div className="flex gap-3 mt-4">
+          <a href="/auth/login" className="px-4 py-2 bg-black text-white rounded">
+            Login
+          </a>
+
+          <a href="/auth/signup" className="px-4 py-2 border rounded">
+            Sign Up
+          </a>
+        </div>
+      </div>
+    );
+  }
+
   if (loading || !user || streak === null) {
     return (
       <div className="max-w-6xl mx-auto px-6 py-10 animate-pulse">
