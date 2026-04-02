@@ -14,42 +14,31 @@ export default function NewTaskPage() {
   const [category, setCategory] = useState("growth");
   const [tasks, setTasks] = useState<any[]>([]);
   const [partnerTasks, setPartnerTasks] = useState<any[]>([]);
-  const [partnerName, setPartnerName] = useState<string>("Partner");
+  const [partnerName, setPartnerName] = useState("Partner");
   const [fetching, setFetching] = useState(true);
 
-  // ✏️ Editing state
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editCategory, setEditCategory] = useState("growth");
 
-  // 🔐 Protect page
   useEffect(() => {
-    if (!loading && !user) {
-      router.push("/auth/login");
-    }
+    if (!loading && !user) router.push("/auth/login");
   }, [user, loading, router]);
 
-  // 📥 Fetch tasks (MY + PARTNER)
   useEffect(() => {
     if (!user?.id) return;
 
     const fetchTasks = async () => {
       setFetching(true);
 
-      // ✅ 1. Get my tasks
-      const { data: myTasks, error: myError } = await supabase
+      const { data: myTasks } = await supabase
         .from("tasks")
         .select("*")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
-      if (myError) {
-        console.error("Error fetching my tasks:", myError);
-      } else {
-        setTasks(myTasks || []);
-      }
+      setTasks(myTasks || []);
 
-      // ✅ 2. Get my profile (to find partner)
       const { data: profile } = await supabase
         .from("profiles")
         .select("partner_id")
@@ -57,29 +46,21 @@ export default function NewTaskPage() {
         .single();
 
       if (profile?.partner_id) {
-        // ✅ 3. Get partner profile (for name)
         const { data: partnerProfile } = await supabase
           .from("profiles")
           .select("name")
           .eq("id", profile.partner_id)
           .single();
 
-        if (partnerProfile?.name) {
-          setPartnerName(partnerProfile.name);
-        }
+        if (partnerProfile?.name) setPartnerName(partnerProfile.name);
 
-        // ✅ 4. Get partner tasks
-        const { data: pTasks, error: pError } = await supabase
+        const { data: pTasks } = await supabase
           .from("tasks")
           .select("*")
           .eq("user_id", profile.partner_id)
           .order("created_at", { ascending: false });
 
-        if (pError) {
-          console.error("Error fetching partner tasks:", pError);
-        } else {
-          setPartnerTasks(pTasks || []);
-        }
+        setPartnerTasks(pTasks || []);
       } else {
         setPartnerTasks([]);
       }
@@ -90,104 +71,72 @@ export default function NewTaskPage() {
     fetchTasks();
   }, [user?.id]);
 
-  // 🤖 Auto-suggest category
   useEffect(() => {
-    if (name.trim().length > 0) {
-      const suggested = suggestCategory(name);
-      setCategory(suggested);
-    }
+    if (name.trim()) setCategory(suggestCategory(name));
   }, [name]);
 
-  // ➕ CREATE TASK
   const handleCreate = async () => {
     if (!user) return alert("Not logged in");
     if (!name.trim()) return alert("Task name is required");
 
-    const { data: existingTasks } = await supabase
+    const { data: existing } = await supabase
       .from("tasks")
       .select("*")
       .eq("user_id", user.id)
       .eq("name", name);
 
-    if (existingTasks && existingTasks.length > 0) {
-      return alert("Task already exists");
-    }
+    if (existing?.length) return alert("Task already exists");
 
-    const { data: newTask, error } = await supabase
+    const { data, error } = await supabase
       .from("tasks")
-      .insert({
-        user_id: user.id,
-        name,
-        category,
-      })
+      .insert({ user_id: user.id, name, category })
       .select()
       .single();
 
-    if (error) {
-      console.error(error);
-      return alert("Error creating task");
-    }
+    if (error) return alert("Error creating task");
 
-    setTasks((prev) => [newTask, ...prev]);
+    setTasks((prev) => [data, ...prev]);
     setName("");
     setCategory("growth");
-
-    alert("Task created!");
   };
 
-  // 🗑 DELETE TASK
   const handleDelete = async (id: string) => {
-    const confirmDelete = confirm("Delete this task?");
-    if (!confirmDelete) return;
+    if (!confirm("Delete this task?")) return;
 
-    const { error } = await supabase.from("tasks").delete().eq("id", id);
-
-    if (error) {
-      console.error(error);
-      return alert("Error deleting task");
-    }
-
+    await supabase.from("tasks").delete().eq("id", id);
     setTasks((prev) => prev.filter((t) => t.id !== id));
   };
 
-  // ✏️ START EDIT
   const startEdit = (task: any) => {
     setEditingTaskId(task.id);
     setEditName(task.name);
     setEditCategory(task.category);
   };
 
-  // ❌ CANCEL EDIT
   const cancelEdit = () => {
     setEditingTaskId(null);
     setEditName("");
     setEditCategory("growth");
   };
 
-  // 💾 SAVE EDIT
   const saveEdit = async (id: string) => {
-    if (!editName.trim()) return alert("Task name required");
+    if (!editName.trim()) return;
 
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from("tasks")
-      .update({
-        name: editName,
-        category: editCategory,
-      })
+      .update({ name: editName, category: editCategory })
       .eq("id", id)
       .select()
       .single();
 
-    if (error) {
-      console.error(error);
-      return alert("Error updating task");
-    }
-
-    setTasks((prev) =>
-      prev.map((t) => (t.id === id ? data : t))
-    );
-
+    setTasks((prev) => prev.map((t) => (t.id === id ? data : t)));
     cancelEdit();
+  };
+
+  const categoryStyle = (cat: string) => {
+    if (cat === "growth") return "bg-green-100 text-green-700";
+    if (cat === "neutral") return "bg-yellow-100 text-yellow-700";
+    return "bg-red-100 text-red-700";
   };
 
   if (loading) {
@@ -195,140 +144,161 @@ export default function NewTaskPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6 max-w-md mx-auto mt-20">
-      <h1 className="text-2xl font-bold">Add Task</h1>
+    <div className="max-w-md mx-auto px-4 pb-28 pt-6">
+      <h1 className="text-2xl font-bold mb-6 text-center">
+        Your Tasks
+      </h1>
 
-      {/* CREATE FORM */}
-      <div className="flex flex-col gap-4">
-        <input
-          placeholder="Task name (e.g. Coding)"
-          className="border p-2"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
+      {/* TASK LIST */}
+      <div className="space-y-6">
+        {/* YOUR TASKS */}
+        <section>
+          <h2 className="text-lg font-semibold mb-3">You</h2>
 
-        <select
-          className="border p-2"
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-        >
-          <option value="growth">Growth</option>
-          <option value="neutral">Neutral</option>
-          <option value="waste">Time-wasting</option>
-        </select>
+          {fetching ? (
+            <p>Loading...</p>
+          ) : tasks.length === 0 ? (
+            <p className="text-gray-500">No tasks yet</p>
+          ) : (
+            <div className="space-y-3">
+              {tasks.map((task) => (
+                <div
+                  key={task.id}
+                  className="bg-white shadow-sm rounded-xl p-3 border"
+                >
+                  {editingTaskId === task.id ? (
+                    <div className="space-y-2">
+                      <input
+                        className="w-full border rounded-lg p-2"
+                        value={editName}
+                        onChange={(e) =>
+                          setEditName(e.target.value)
+                        }
+                      />
 
-        <button
-          onClick={handleCreate}
-          className="bg-black text-white p-2"
-        >
-          Save Task
-        </button>
+                      <select
+                        className="w-full border rounded-lg p-2"
+                        value={editCategory}
+                        onChange={(e) =>
+                          setEditCategory(e.target.value)
+                        }
+                      >
+                        <option value="growth">Growth</option>
+                        <option value="neutral">Neutral</option>
+                        <option value="waste">Waste</option>
+                      </select>
+
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => saveEdit(task.id)}
+                          className="flex-1 bg-green-600 text-white py-2 rounded-lg"
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={cancelEdit}
+                          className="flex-1 bg-gray-300 py-2 rounded-lg"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="font-medium">{task.name}</p>
+                        <span
+                          className={`text-xs px-2 py-1 rounded-full ${categoryStyle(
+                            task.category
+                          )}`}
+                        >
+                          {task.category}
+                        </span>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => startEdit(task)}
+                          className="text-sm px-3 py-1 bg-blue-100 text-blue-700 rounded-lg"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDelete(task.id)}
+                          className="text-sm px-3 py-1 bg-red-100 text-red-700 rounded-lg"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* PARTNER TASKS */}
+        <section>
+          <h2 className="text-lg font-semibold mb-3">
+            {partnerName}
+          </h2>
+
+          {fetching ? (
+            <p>Loading...</p>
+          ) : partnerTasks.length === 0 ? (
+            <p className="text-gray-500">No tasks yet</p>
+          ) : (
+            <div className="space-y-3">
+              {partnerTasks.map((task) => (
+                <div
+                  key={task.id}
+                  className="bg-gray-50 border rounded-xl p-3"
+                >
+                  <p className="font-medium">{task.name}</p>
+                  <span
+                    className={`text-xs px-2 py-1 rounded-full ${categoryStyle(
+                      task.category
+                    )}`}
+                  >
+                    {task.category}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
       </div>
 
-      {/* YOUR TASKS */}
-      <div>
-        <h2 className="text-lg font-semibold mb-2">Your Tasks</h2>
+      {/* STICKY CREATE BAR */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4">
+        <div className="max-w-md mx-auto space-y-2">
+          <input
+            placeholder="Add new task..."
+            className="w-full border rounded-lg p-3"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
 
-        {fetching ? (
-          <p>Loading tasks...</p>
-        ) : tasks.length === 0 ? (
-          <p className="text-gray-500">No tasks yet.</p>
-        ) : (
-          <ul className="flex flex-col gap-2">
-            {tasks.map((task) => (
-              <li
-                key={task.id}
-                className="border p-2 flex flex-col gap-2"
-              >
-                {editingTaskId === task.id ? (
-                  <>
-                    <input
-                      className="border p-1"
-                      value={editName}
-                      onChange={(e) => setEditName(e.target.value)}
-                    />
+          <div className="flex gap-2">
+            <select
+              className="flex-1 border rounded-lg p-2"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+            >
+              <option value="growth">Growth</option>
+              <option value="neutral">Neutral</option>
+              <option value="waste">Waste</option>
+            </select>
 
-                    <select
-                      className="border p-1"
-                      value={editCategory}
-                      onChange={(e) =>
-                        setEditCategory(e.target.value)
-                      }
-                    >
-                      <option value="growth">Growth</option>
-                      <option value="neutral">Neutral</option>
-                      <option value="waste">Time-wasting</option>
-                    </select>
-
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => saveEdit(task.id)}
-                        className="bg-green-600 text-white px-2"
-                      >
-                        Save
-                      </button>
-                      <button
-                        onClick={cancelEdit}
-                        className="bg-gray-400 text-white px-2"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p>{task.name}</p>
-                      <p className="text-sm text-gray-500">
-                        {task.category}
-                      </p>
-                    </div>
-
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => startEdit(task)}
-                        className="text-blue-600 text-sm"
-                      >
-                        Edit
-                      </button>
-
-                      <button
-                        onClick={() => handleDelete(task.id)}
-                        className="text-red-600 text-sm"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      {/* PARTNER TASKS */}
-      <div>
-        <h2 className="text-lg font-semibold mb-2">
-          {partnerName}’s Tasks
-        </h2>
-
-        {fetching ? (
-          <p>Loading tasks...</p>
-        ) : partnerTasks.length === 0 ? (
-          <p className="text-gray-500">No tasks yet.</p>
-        ) : (
-          <ul className="flex flex-col gap-2">
-            {partnerTasks.map((task) => (
-              <li key={task.id} className="border p-2">
-                <p>{task.name}</p>
-                <p className="text-sm text-gray-500">
-                  {task.category}
-                </p>
-              </li>
-            ))}
-          </ul>
-        )}
+            <button
+              onClick={handleCreate}
+              className="flex-1 bg-black text-white rounded-lg"
+            >
+              Add
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
