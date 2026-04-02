@@ -13,6 +13,8 @@ export default function NewTaskPage() {
   const [name, setName] = useState("");
   const [category, setCategory] = useState("growth");
   const [tasks, setTasks] = useState<any[]>([]);
+  const [partnerTasks, setPartnerTasks] = useState<any[]>([]);
+  const [partnerName, setPartnerName] = useState<string>("Partner");
   const [fetching, setFetching] = useState(true);
 
   // ✏️ Editing state
@@ -27,23 +29,59 @@ export default function NewTaskPage() {
     }
   }, [user, loading, router]);
 
-  // 📥 Fetch tasks
+  // 📥 Fetch tasks (MY + PARTNER)
   useEffect(() => {
     if (!user?.id) return;
 
     const fetchTasks = async () => {
       setFetching(true);
 
-      const { data, error } = await supabase
+      // ✅ 1. Get my tasks
+      const { data: myTasks, error: myError } = await supabase
         .from("tasks")
         .select("*")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
-      if (error) {
-        console.error("Error fetching tasks:", error);
+      if (myError) {
+        console.error("Error fetching my tasks:", myError);
       } else {
-        setTasks(data || []);
+        setTasks(myTasks || []);
+      }
+
+      // ✅ 2. Get my profile (to find partner)
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("partner_id")
+        .eq("id", user.id)
+        .single();
+
+      if (profile?.partner_id) {
+        // ✅ 3. Get partner profile (for name)
+        const { data: partnerProfile } = await supabase
+          .from("profiles")
+          .select("name")
+          .eq("id", profile.partner_id)
+          .single();
+
+        if (partnerProfile?.name) {
+          setPartnerName(partnerProfile.name);
+        }
+
+        // ✅ 4. Get partner tasks
+        const { data: pTasks, error: pError } = await supabase
+          .from("tasks")
+          .select("*")
+          .eq("user_id", profile.partner_id)
+          .order("created_at", { ascending: false });
+
+        if (pError) {
+          console.error("Error fetching partner tasks:", pError);
+        } else {
+          setPartnerTasks(pTasks || []);
+        }
+      } else {
+        setPartnerTasks([]);
       }
 
       setFetching(false);
@@ -187,7 +225,7 @@ export default function NewTaskPage() {
         </button>
       </div>
 
-      {/* TASK LIST */}
+      {/* YOUR TASKS */}
       <div>
         <h2 className="text-lg font-semibold mb-2">Your Tasks</h2>
 
@@ -263,6 +301,30 @@ export default function NewTaskPage() {
                     </div>
                   </div>
                 )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* PARTNER TASKS */}
+      <div>
+        <h2 className="text-lg font-semibold mb-2">
+          {partnerName}’s Tasks
+        </h2>
+
+        {fetching ? (
+          <p>Loading tasks...</p>
+        ) : partnerTasks.length === 0 ? (
+          <p className="text-gray-500">No tasks yet.</p>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {partnerTasks.map((task) => (
+              <li key={task.id} className="border p-2">
+                <p>{task.name}</p>
+                <p className="text-sm text-gray-500">
+                  {task.category}
+                </p>
               </li>
             ))}
           </ul>
