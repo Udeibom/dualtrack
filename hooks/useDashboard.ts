@@ -18,6 +18,7 @@ export function useDashboard(user: any) {
 
   const [streak, setStreak] = useState<number | null>(null);
   const [summary, setSummary] = useState("");
+  const [partnerSummary, setPartnerSummary] = useState("");
 
   const [mySeries, setMySeries] = useState<any[]>([]);
   const [partnerSeries, setPartnerSeries] = useState<any[]>([]);
@@ -26,6 +27,9 @@ export function useDashboard(user: any) {
     if (!user) return;
 
     try {
+      // =========================
+      // 👤 MY PROFILE
+      // =========================
       const { data: myProfile } = await supabase
         .from("profiles")
         .select("*")
@@ -36,6 +40,25 @@ export function useDashboard(user: any) {
 
       setProfile(myProfile);
 
+      // =========================
+      // 🤝 PARTNER PROFILE (FETCH EARLY ✅)
+      // =========================
+      let partner: any = null;
+
+      if (myProfile.partner_id) {
+        const { data } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", myProfile.partner_id)
+          .single();
+
+        partner = data;
+        setPartnerProfile(data);
+      }
+
+      // =========================
+      // 🧾 MY RECENT LOGS
+      // =========================
       const { data: logs } = await supabase
         .from("logs")
         .select(`*, tasks:task_id (name, category)`)
@@ -45,6 +68,9 @@ export function useDashboard(user: any) {
 
       setMyLogs(logs || []);
 
+      // =========================
+      // 🔥 STREAK
+      // =========================
       const { data: allLogs } = await supabase
         .from("logs")
         .select("date")
@@ -67,6 +93,9 @@ export function useDashboard(user: any) {
         setStreak(count);
       }
 
+      // =========================
+      // 🎯 MY GOALS
+      // =========================
       const { data: goals } = await supabase
         .from("goals")
         .select("*")
@@ -74,6 +103,9 @@ export function useDashboard(user: any) {
 
       setMyGoals(goals || []);
 
+      // =========================
+      // 📅 LAST 7 DAYS
+      // =========================
       const last7 = new Date();
       last7.setDate(last7.getDate() - 6);
 
@@ -83,6 +115,9 @@ export function useDashboard(user: any) {
         .eq("user_id", user.id)
         .gte("date", last7.toISOString().split("T")[0]);
 
+      // =========================
+      // 📊 MY SUMMARY
+      // =========================
       if (weekLogs && weekLogs.length > 0) {
         let total = 0;
         const categories: any = { growth: 0, waste: 0 };
@@ -111,7 +146,7 @@ export function useDashboard(user: any) {
 
         setSummary(`
 You spent ${(total / 60).toFixed(1)} hours this week.
-Most of your time went into ${topTask}.
+You focused most on ${topTask}.
 Growth: ${(categories.growth / 60).toFixed(1)}h,
 Waste: ${(categories.waste / 60).toFixed(1)}h.
 `);
@@ -119,6 +154,9 @@ Waste: ${(categories.waste / 60).toFixed(1)}h.
         setSummary("");
       }
 
+      // =========================
+      // 📈 SERIES DATA
+      // =========================
       const { data: myWeek } = await supabase
         .from("logs")
         .select(`date, duration, tasks:task_id (category)`)
@@ -130,25 +168,66 @@ Waste: ${(categories.waste / 60).toFixed(1)}h.
       if (myProfile.partner_id) {
         const { data: pWeek } = await supabase
           .from("logs")
-          .select(`date, duration, tasks:task_id (category)`)
+          .select(`date, duration, tasks:task_id (name, category)`)
           .eq("user_id", myProfile.partner_id)
           .gte("date", last7.toISOString().split("T")[0]);
 
         partnerWeek = pWeek || [];
       }
 
+      // =========================
+      // 🤝 PARTNER SUMMARY (FIXED ✅)
+      // =========================
+      if (partnerWeek && partnerWeek.length > 0) {
+        let total = 0;
+        const categories: any = { growth: 0, waste: 0 };
+        const tasks: any = {};
+
+        partnerWeek.forEach((log) => {
+          total += log.duration;
+
+          if (log.tasks?.category === "growth") {
+            categories.growth += log.duration;
+          }
+
+          if (log.tasks?.category === "waste") {
+            categories.waste += log.duration;
+          }
+
+          if (log.tasks?.name) {
+            tasks[log.tasks.name] =
+              (tasks[log.tasks.name] || 0) + log.duration;
+          }
+        });
+
+        const topTask = Object.keys(tasks).length
+          ? Object.keys(tasks).reduce((a, b) =>
+              tasks[a] > tasks[b] ? a : b
+            )
+          : "various activities";
+
+        const partnerName =
+          partner?.name ||
+          myProfile.partner_name ||
+          "Your partner";
+
+        setPartnerSummary(`
+${partnerName} spent ${(total / 60).toFixed(1)} hours this week.
+Most of ${partnerName}'s time went into ${topTask}.
+Growth: ${(categories.growth / 60).toFixed(1)}h,
+Waste: ${(categories.waste / 60).toFixed(1)}h.
+`);
+      } else {
+        setPartnerSummary("");
+      }
+
       setMySeries(buildDailySeries(myWeek || []));
       setPartnerSeries(buildDailySeries(partnerWeek || []));
 
+      // =========================
+      // 🤝 PARTNER DATA (REST)
+      // =========================
       if (myProfile.partner_id) {
-        const { data: partner } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", myProfile.partner_id)
-          .single();
-
-        setPartnerProfile(partner);
-
         const { data: pLogs } = await supabase
           .from("logs")
           .select(`*, tasks:task_id (name, category)`)
@@ -191,6 +270,7 @@ Waste: ${(categories.waste / 60).toFixed(1)}h.
     latestMessage,
     streak,
     summary,
+    partnerSummary,
     mySeries,
     partnerSeries,
     loadDashboard,

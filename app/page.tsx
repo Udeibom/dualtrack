@@ -25,6 +25,7 @@ export default function Home() {
     latestMessage,
     streak,
     summary,
+    partnerSummary,
     mySeries,
     partnerSeries,
     loadDashboard,
@@ -65,7 +66,12 @@ export default function Home() {
         setLatestMessage={setLatestMessage}
       />
 
-      <WeeklySummary summary={summary} latestMessage={latestMessage} />
+      <WeeklySummary
+        summary={summary}
+        partnerSummary={partnerSummary}
+        partnerProfile={partnerProfile}
+        latestMessage={latestMessage}
+      />
 
       <WeeklyComparison
         profile={profile}

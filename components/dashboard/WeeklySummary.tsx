@@ -1,11 +1,15 @@
 export default function WeeklySummary({
   summary,
+  partnerSummary,
+  partnerProfile,
   latestMessage,
 }: {
   summary: string;
+  partnerSummary: string;
+  partnerProfile: any;
   latestMessage: any;
 }) {
-  if (!summary && !latestMessage) return null;
+  if (!summary && !partnerSummary && !latestMessage) return null;
 
   return (
     <>
@@ -18,12 +22,29 @@ export default function WeeklySummary({
         </div>
       )}
 
-      {summary && (
+      {(summary || partnerSummary) && (
         <div className="card mb-8">
           <p className="card-title">This week</p>
-          <p className="text-[13px] leading-relaxed text-gray-300 whitespace-pre-line">
-            {summary}
-          </p>
+
+          {summary && (
+            <div className="mb-4">
+              <p className="text-[12px] text-gray-400 mb-1">You</p>
+              <p className="text-[13px] leading-relaxed text-gray-300 whitespace-pre-line">
+                {summary}
+              </p>
+            </div>
+          )}
+
+          {partnerSummary && (
+            <div>
+              <p className="text-[12px] text-gray-400 mb-1">
+                {partnerProfile?.name || "Your Partner"}
+              </p>
+              <p className="text-[13px] leading-relaxed text-gray-300 whitespace-pre-line">
+                {partnerSummary}
+              </p>
+            </div>
+          )}
         </div>
       )}
     </>
