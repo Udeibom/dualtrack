@@ -55,13 +55,12 @@ export default function LogPage() {
     fetchTasks();
   }, [user?.id]);
 
-  // ✅ Fetch logs (YOU + PARTNER)
+  // ✅ Fetch logs
   const fetchLogs = async () => {
     if (!user?.id) return;
 
     setFetchingLogs(true);
 
-    // 👉 get partner id
     const { data: profile } = await supabase
       .from("profiles")
       .select("partner_id")
@@ -83,10 +82,7 @@ export default function LogPage() {
       .eq("user_id", user.id)
       .order("date", { ascending: false });
 
-    if (myError) {
-      console.error(myError.message);
-    }
-
+    if (myError) console.error(myError.message);
     setLogs(myLogs || []);
 
     // 👉 PARTNER LOGS
@@ -115,10 +111,7 @@ export default function LogPage() {
         .eq("user_id", profile.partner_id)
         .order("date", { ascending: false });
 
-      if (pError) {
-        console.error(pError.message);
-      }
-
+      if (pError) console.error(pError.message);
       setPartnerLogs(pLogs || []);
     } else {
       setPartnerLogs([]);
@@ -232,7 +225,6 @@ export default function LogPage() {
   const formatDuration = (mins: number) => {
     const h = Math.floor(mins / 60);
     const m = mins % 60;
-
     if (h > 0) return `${h}h ${m}m`;
     return `${m}m`;
   };
@@ -241,6 +233,22 @@ export default function LogPage() {
     if (cat === "growth") return "bg-green-100 text-green-700";
     if (cat === "neutral") return "bg-yellow-100 text-yellow-700";
     return "bg-red-100 text-red-700";
+  };
+
+  // ✅ NEW HELPERS
+  const groupLogsByDate = (logs: any[]) => {
+    const grouped: Record<string, any[]> = {};
+    logs.forEach((log) => {
+      if (!grouped[log.date]) {
+        grouped[log.date] = [];
+      }
+      grouped[log.date].push(log);
+    });
+    return grouped;
+  };
+
+  const calculateDayTotal = (logs: any[]) => {
+    return logs.reduce((sum, log) => sum + log.duration, 0);
   };
 
   return (
@@ -300,110 +308,145 @@ export default function LogPage() {
         ) : logs.length === 0 ? (
           <p className="text-gray-500">No logs yet</p>
         ) : (
-          <div className="space-y-3">
-            {logs.map((log) => {
-              const isEditing = editingLogId === log.id;
+          <div className="space-y-6">
+            {Object.entries(groupLogsByDate(logs)).map(
+              ([date, dayLogs]) => (
+                <div key={date}>
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="font-semibold text-gray-800">
+                      {date}
+                    </h3>
+                    <span className="text-sm text-gray-600">
+                      Total:{" "}
+                      {formatDuration(
+                        calculateDayTotal(dayLogs)
+                      )}
+                    </span>
+                  </div>
 
-              return (
-                <div
-                  key={log.id}
-                  className="bg-white border rounded-xl p-3 shadow-sm space-y-3"
-                >
-                  {isEditing ? (
-                    <>
-                      <select
-                        className="border p-2 w-full"
-                        value={editTaskId}
-                        onChange={(e) =>
-                          setEditTaskId(e.target.value)
-                        }
-                      >
-                        {tasks.map((task) => (
-                          <option key={task.id} value={task.id}>
-                            {task.name}
-                          </option>
-                        ))}
-                      </select>
+                  <div className="space-y-3">
+                    {dayLogs.map((log) => {
+                      const isEditing =
+                        editingLogId === log.id;
 
-                      <div className="flex gap-2">
-                        <input
-                          type="number"
-                          className="border p-2 w-1/2"
-                          value={editHours}
-                          onChange={(e) =>
-                            setEditHours(e.target.value)
-                          }
-                        />
-                        <input
-                          type="number"
-                          className="border p-2 w-1/2"
-                          value={editMinutes}
-                          onChange={(e) =>
-                            setEditMinutes(e.target.value)
-                          }
-                        />
-                      </div>
-
-                      <div className="flex gap-2">
-                        <button
-                          onClick={handleUpdate}
-                          className="bg-green-600 text-white px-3 py-1 rounded"
+                      return (
+                        <div
+                          key={log.id}
+                          className="bg-white border rounded-xl p-3 shadow-sm space-y-3"
                         >
-                          Save
-                        </button>
-                        <button
-                          onClick={cancelEdit}
-                          className="bg-gray-300 px-3 py-1 rounded"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <p className="font-medium text-gray-900">
-                            {log.tasks?.name || "Unknown Task"}
-                          </p>
-                          <span
-                            className={`text-xs px-2 py-1 rounded-full ${categoryStyle(
-                              log.tasks?.category || "neutral"
-                            )}`}
-                          >
-                            {log.tasks?.category}
-                          </span>
+                          {isEditing ? (
+                            <>
+                              <select
+                                className="border p-2 w-full"
+                                value={editTaskId}
+                                onChange={(e) =>
+                                  setEditTaskId(
+                                    e.target.value
+                                  )
+                                }
+                              >
+                                {tasks.map((task) => (
+                                  <option
+                                    key={task.id}
+                                    value={task.id}
+                                  >
+                                    {task.name}
+                                  </option>
+                                ))}
+                              </select>
+
+                              <div className="flex gap-2">
+                                <input
+                                  type="number"
+                                  className="border p-2 w-1/2"
+                                  value={editHours}
+                                  onChange={(e) =>
+                                    setEditHours(
+                                      e.target.value
+                                    )
+                                  }
+                                />
+                                <input
+                                  type="number"
+                                  className="border p-2 w-1/2"
+                                  value={editMinutes}
+                                  onChange={(e) =>
+                                    setEditMinutes(
+                                      e.target.value
+                                    )
+                                  }
+                                />
+                              </div>
+
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={handleUpdate}
+                                  className="bg-green-600 text-white px-3 py-1 rounded"
+                                >
+                                  Save
+                                </button>
+                                <button
+                                  onClick={cancelEdit}
+                                  className="bg-gray-300 px-3 py-1 rounded"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="flex justify-between items-center">
+                                <div>
+                                  <p className="font-medium text-gray-900">
+                                    {log.tasks?.name ||
+                                      "Unknown Task"}
+                                  </p>
+                                  <span
+                                    className={`text-xs px-2 py-1 rounded-full ${categoryStyle(
+                                      log.tasks?.category ||
+                                        "neutral"
+                                    )}`}
+                                  >
+                                    {
+                                      log.tasks?.category
+                                    }
+                                  </span>
+                                </div>
+
+                                <p className="font-semibold text-gray-900">
+                                  {formatDuration(
+                                    log.duration
+                                  )}
+                                </p>
+                              </div>
+
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() =>
+                                    startEdit(log)
+                                  }
+                                  className="text-sm bg-blue-500 text-white px-2 py-1 rounded"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    handleDelete(log.id)
+                                  }
+                                  className="text-sm bg-red-500 text-white px-2 py-1 rounded"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </>
+                          )}
                         </div>
-
-                        <div className="text-right">
-                          <p className="font-semibold text-gray-900">
-                            {formatDuration(log.duration)}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {log.date}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => startEdit(log)}
-                          className="text-sm bg-blue-500 text-white px-2 py-1 rounded"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(log.id)}
-                          className="text-sm bg-red-500 text-white px-2 py-1 rounded"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </>
-                  )}
+                      );
+                    })}
+                  </div>
                 </div>
-              );
-            })}
+              )
+            )}
           </div>
         )}
       </div>
@@ -419,34 +462,53 @@ export default function LogPage() {
         ) : partnerLogs.length === 0 ? (
           <p className="text-gray-500">No logs yet</p>
         ) : (
-          <div className="space-y-3">
-            {partnerLogs.map((log) => (
-              <div
-                key={log.id}
-                className="bg-gray-50 border rounded-xl p-3"
-              >
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="font-medium text-gray-900">
-                      {log.tasks?.name || "Unknown Task"}
-                    </p>
-                    <span
-                      className={`text-xs px-2 py-1 rounded-full ${categoryStyle(
-                        log.tasks?.category || "neutral"
-                      )}`}
-                    >
-                      {log.tasks?.category}
-                    </span>
-                  </div>
+          <div className="space-y-6">
+            {Object.entries(
+              groupLogsByDate(partnerLogs)
+            ).map(([date, dayLogs]) => (
+              <div key={date}>
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="font-semibold text-gray-800">
+                    {date}
+                  </h3>
+                  <span className="text-sm text-gray-600">
+                    Total:{" "}
+                    {formatDuration(
+                      calculateDayTotal(dayLogs)
+                    )}
+                  </span>
+                </div>
 
-                  <div className="text-right">
-                    <p className="font-semibold text-gray-900">
-                      {formatDuration(log.duration)}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {log.date}
-                    </p>
-                  </div>
+                <div className="space-y-3">
+                  {dayLogs.map((log) => (
+                    <div
+                      key={log.id}
+                      className="bg-gray-50 border rounded-xl p-3"
+                    >
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="font-medium text-gray-900">
+                            {log.tasks?.name ||
+                              "Unknown Task"}
+                          </p>
+                          <span
+                            className={`text-xs px-2 py-1 rounded-full ${categoryStyle(
+                              log.tasks?.category ||
+                                "neutral"
+                            )}`}
+                          >
+                            {log.tasks?.category}
+                          </span>
+                        </div>
+
+                        <p className="font-semibold text-gray-900">
+                          {formatDuration(
+                            log.duration
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             ))}
