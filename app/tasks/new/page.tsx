@@ -158,7 +158,7 @@ export default function NewTaskPage() {
           {fetching ? (
             <p>Loading...</p>
           ) : tasks.length === 0 ? (
-            <p className="text-gray-500">No tasks yet</p>
+            <p className="text-black">No tasks yet</p>
           ) : (
             <div className="space-y-3">
               {tasks.map((task) => (
@@ -206,7 +206,7 @@ export default function NewTaskPage() {
                   ) : (
                     <div className="flex justify-between items-center">
                       <div>
-                        <p className="font-medium">{task.name}</p>
+                        <p className="font-medium text-gray-900">{task.name}</p>
                         <span
                           className={`text-xs px-2 py-1 rounded-full ${categoryStyle(
                             task.category
@@ -247,7 +247,7 @@ export default function NewTaskPage() {
           {fetching ? (
             <p>Loading...</p>
           ) : partnerTasks.length === 0 ? (
-            <p className="text-gray-500">No tasks yet</p>
+            <p className="text-black">No tasks yet</p>
           ) : (
             <div className="space-y-3">
               {partnerTasks.map((task) => (
@@ -255,7 +255,7 @@ export default function NewTaskPage() {
                   key={task.id}
                   className="bg-gray-50 border rounded-xl p-3"
                 >
-                  <p className="font-medium">{task.name}</p>
+                  <p className="font-medium text-gray-900">{task.name}</p>
                   <span
                     className={`text-xs px-2 py-1 rounded-full ${categoryStyle(
                       task.category

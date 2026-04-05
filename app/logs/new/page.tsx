@@ -363,7 +363,7 @@ export default function LogPage() {
                     <>
                       <div className="flex justify-between items-center">
                         <div>
-                          <p className="font-medium">
+                          <p className="font-medium text-gray-900">
                             {log.tasks?.name || "Unknown Task"}
                           </p>
                           <span
@@ -376,7 +376,7 @@ export default function LogPage() {
                         </div>
 
                         <div className="text-right">
-                          <p className="font-semibold">
+                          <p className="font-semibold text-gray-900">
                             {formatDuration(log.duration)}
                           </p>
                           <p className="text-xs text-gray-500">
@@ -427,7 +427,7 @@ export default function LogPage() {
               >
                 <div className="flex justify-between items-center">
                   <div>
-                    <p className="font-medium">
+                    <p className="font-medium text-gray-900">
                       {log.tasks?.name || "Unknown Task"}
                     </p>
                     <span
@@ -440,7 +440,7 @@ export default function LogPage() {
                   </div>
 
                   <div className="text-right">
-                    <p className="font-semibold">
+                    <p className="font-semibold text-gray-900">
                       {formatDuration(log.duration)}
                     </p>
                     <p className="text-xs text-gray-500">
