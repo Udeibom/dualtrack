@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/app/providers";
 import { useDashboard } from "@/hooks/useDashboard";
 
@@ -11,6 +11,7 @@ import WeeklySummary from "@/components/dashboard/WeeklySummary";
 import WeeklyComparison from "@/components/dashboard/WeeklyComparison";
 import GoalsSection from "@/components/dashboard/GoalsSection";
 import MessagingSection from "@/components/dashboard/MessagingSection";
+import LogsModal from "@/components/dashboard/LogsModal";
 
 export default function Home() {
   const { user, loading } = useAuth();
@@ -31,6 +32,9 @@ export default function Home() {
     loadDashboard,
     setLatestMessage,
   } = useDashboard(user);
+
+  const [showMyLogs, setShowMyLogs] = useState(false);
+  const [showPartnerLogs, setShowPartnerLogs] = useState(false);
 
   useEffect(() => {
     if (!user || loading) return;
@@ -53,7 +57,26 @@ export default function Home() {
         streak={streak}
         myLogs={myLogs}
         partnerLogs={partnerLogs}
+        onOpenMyLogs={() => setShowMyLogs(true)}
+        onOpenPartnerLogs={() => setShowPartnerLogs(true)}
       />
+
+      {/* MODALS */}
+      {showMyLogs && (
+        <LogsModal
+          title="Your Logs"
+          logs={myLogs}
+          onClose={() => setShowMyLogs(false)}
+        />
+      )}
+
+      {showPartnerLogs && (
+        <LogsModal
+          title="Partner Logs"
+          logs={partnerLogs}
+          onClose={() => setShowPartnerLogs(false)}
+        />
+      )}
 
       <AlertBanner
         myLogs={myLogs}

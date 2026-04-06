@@ -25,6 +25,7 @@ export default function Navbar() {
           <Link href="/goals/new" className="hover:text-white transition">Goal</Link>
           <Link href="/link" className="hover:text-white transition">Link</Link>
           <Link href="/notes" className="hover:text-white transition">Notes</Link>
+          <Link href="/planner" className="hover:text-white transition">Planner</Link>
         </div>
 
         {/* Right Side */}
@@ -54,6 +55,7 @@ export default function Navbar() {
           <Link href="/goals/new" onClick={() => setOpen(false)}>Goal</Link>
           <Link href="/link" onClick={() => setOpen(false)}>Link</Link>
           <Link href="/notes" onClick={() => setOpen(false)}>Notes</Link>
+          <Link href="/planner" onClick={() => setOpen(false)}>Planner</Link>
         </div>
       )}
     </nav>
