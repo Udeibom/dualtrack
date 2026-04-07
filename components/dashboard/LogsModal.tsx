@@ -31,7 +31,7 @@ export default function LogsModal({
 
   return (
     <div className="fixed inset-0 bg-black/60 flex justify-center items-start pt-10 z-50">
-      <div className="bg-white w-full max-w-lg rounded-xl p-5 max-h-[80vh] overflow-y-auto">
+      <div className="bg-white text-gray-900 w-full max-w-lg rounded-xl p-5 max-h-[80vh] overflow-y-auto">
         {/* HEADER */}
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-bold">{title}</h2>
