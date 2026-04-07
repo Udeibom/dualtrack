@@ -46,7 +46,7 @@ export default function LogsModal({
               ([date, dayLogs]) => (
                 <div key={date}>
                   <div className="flex justify-between mb-2">
-                    <p className="font-semibold">{date}</p>
+                    <p className="font-semibold text-gray-900">{date}</p>
                     <p className="text-sm text-gray-900">
                       {formatDuration(
                         calculateDayTotal(dayLogs)
