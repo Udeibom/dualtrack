@@ -39,7 +39,7 @@ export default function LogsModal({
         </div>
 
         {logs.length === 0 ? (
-          <p className="text-gray-500">No logs yet</p>
+          <p className="text-gray-900">No logs yet</p>
         ) : (
           <div className="space-y-6">
             {Object.entries(groupLogsByDate(logs)).map(
@@ -47,7 +47,7 @@ export default function LogsModal({
                 <div key={date}>
                   <div className="flex justify-between mb-2">
                     <p className="font-semibold">{date}</p>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-gray-900">
                       {formatDuration(
                         calculateDayTotal(dayLogs)
                       )}
