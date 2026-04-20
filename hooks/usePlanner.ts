@@ -3,11 +3,9 @@
 import { useState, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 
-export function usePlanner(user: any) {
+export function usePlanner(user: any, type: "daily" | "weekly" | "monthly", date: string) {
   const [plan, setPlan] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-
-  const today = new Date().toISOString().split("T")[0];
 
   const loadPlan = useCallback(async () => {
     if (!user) return;
@@ -18,53 +16,46 @@ export function usePlanner(user: any) {
       .from("plans")
       .select("*")
       .eq("user_id", user.id)
-      .eq("date", today)
+      .eq("date", date)
+      .eq("type", type)
       .maybeSingle();
 
-    if (error) {
-      console.error("Load plan error:", error);
-    }
+    if (error) console.error(error);
 
     if (data) {
-      setPlan(data);
+      setPlan({
+        ...data,
+        tasks: typeof data.tasks === "string"
+          ? JSON.parse(data.tasks)
+          : data.tasks,
+      });
     } else {
       setPlan(null);
     }
 
     setLoading(false);
-  }, [user, today]);
+  }, [user, date, type]);
 
-  const savePlan = useCallback(
-    async (payload: any) => {
-      if (!user) return { success: false };
+  const savePlan = useCallback(async (payload: any) => {
+    if (!user) return { success: false };
 
-      const { error } = await supabase.from("plans").upsert(
-        {
-          user_id: user.id,
-          date: today,
-          ...payload,
-        },
-        {
-          onConflict: "user_id,date",
-        }
-      );
-
-      if (error) {
-        console.error("Save plan error:", error);
-        return { success: false, error };
+    const { error } = await supabase.from("plans").upsert(
+      {
+        user_id: user.id,
+        date,
+        type,
+        ...payload,
+      },
+      {
+        onConflict: "user_id,date,type",
       }
+    );
 
-      await loadPlan();
+    if (error) return { success: false };
 
-      return { success: true };
-    },
-    [user, today, loadPlan]
-  );
+    await loadPlan();
+    return { success: true };
+  }, [user, date, type, loadPlan]);
 
-  return {
-    plan,
-    loading,
-    loadPlan,
-    savePlan,
-  };
+  return { plan, loading, loadPlan, savePlan };
 }
