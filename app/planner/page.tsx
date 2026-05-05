@@ -1,24 +1,41 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { motion } from "framer-motion";
+import { Clock3, Plus, Target, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/app/providers";
 import { usePlanner } from "@/hooks/usePlanner";
-import { motion } from "framer-motion";
 
-type PlanType = "monthly" | "weekly" | "daily";
+type PlanType = "daily" | "weekly" | "monthly";
+
+type Task = {
+  id: number;
+  title: string;
+  startTime: string;
+  endTime: string;
+  category: "deep_work" | "health" | "learning" | "admin" | "rest";
+  done: boolean;
+};
+
+const categoryLabel = {
+  deep_work: "Deep Work",
+  health: "Health",
+  learning: "Learning",
+  admin: "Admin",
+  rest: "Recovery",
+};
 
 export default function PlannerPage() {
   const { user } = useAuth();
 
-  const [type, setType] = useState<PlanType>("monthly");
+  const [type, setType] = useState<PlanType>("daily");
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
 
   const { plan, loadPlan, savePlan, loading } = usePlanner(user, type, date);
 
-  const [items, setItems] = useState<any[]>([]);
-  const [focus, setFocus] = useState("");
+  const [mission, setMission] = useState("");
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [saving, setSaving] = useState(false);
-  const [success, setSuccess] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -26,189 +43,183 @@ export default function PlannerPage() {
   }, [user, type, date]);
 
   useEffect(() => {
-    if (plan) {
-      setItems(plan.tasks || []);
-      setFocus(plan.focus || "");
-    } else {
-      setItems([]);
-      setFocus("");
+    if (!plan) {
+      setMission("");
+      setTasks([]);
+      return;
+    }
+
+    setMission(plan.focus || "");
+
+    try {
+      const parsed = typeof plan.tasks === "string"
+        ? JSON.parse(plan.tasks)
+        : plan.tasks;
+
+      setTasks(parsed || []);
+    } catch {
+      setTasks([]);
     }
   }, [plan]);
 
-  const addItem = () => {
-    setItems((prev) => [
+  const addTask = () => {
+    setTasks((prev) => [
       ...prev,
-      { id: Date.now(), title: "", done: false },
+      {
+        id: Date.now(),
+        title: "",
+        startTime: "",
+        endTime: "",
+        category: "deep_work",
+        done: false,
+      },
     ]);
   };
 
-  const updateItem = (id: number, value: string) => {
-    setItems((prev) =>
-      prev.map((i) => (i.id === id ? { ...i, title: value } : i))
-    );
-  };
-
-  const toggleItem = (id: number) => {
-    setItems((prev) =>
-      prev.map((i) =>
-        i.id === id ? { ...i, done: !i.done } : i
+  const updateTask = (id: number, field: keyof Task, value: string | boolean) => {
+    setTasks((prev) =>
+      prev.map((task) =>
+        task.id === id ? { ...task, [field]: value } : task
       )
     );
   };
 
-  const save = async () => {
+  const totalCompleted = useMemo(() => {
+    if (!tasks.length) return 0;
+    return Math.round((tasks.filter((t) => t.done).length / tasks.length) * 100);
+  }, [tasks]);
+
+  const handleSave = async () => {
     setSaving(true);
-    const res = await savePlan({ focus, tasks: items });
+    await savePlan({
+      focus: mission,
+      tasks,
+    });
     setSaving(false);
-
-    if (res?.success) {
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 2500);
-    }
-  };
-
-  const titleMap = {
-    monthly: "Monthly Plan",
-    weekly: "Weekly Breakdown",
-    daily: "Daily Execution",
   };
 
   return (
-    <div className="max-w-5xl mx-auto p-6 space-y-6">
+    <div className="max-w-6xl mx-auto p-6 space-y-6">
+      <div className="grid md:grid-cols-3 gap-4">
+        <div className="md:col-span-2 bg-white rounded-3xl shadow-sm p-6 border">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-3xl font-bold">Time Architecture</h1>
+              <p className="text-gray-500 mt-1">
+                Every hour has a purpose.
+              </p>
+            </div>
 
-      {/* HEADER */}
-      <div className="space-y-2">
-        <h1 className="text-2xl font-semibold">Planner</h1>
-        <p className="text-sm text-gray-500">
-          Plan your month → break into weeks → execute daily
-        </p>
-      </div>
-
-      {/* FLOW INDICATOR */}
-      <div className="flex items-center gap-2 text-sm">
-        {["monthly", "weekly", "daily"].map((t, i) => (
-          <div key={t} className="flex items-center gap-2">
-            <button
-              onClick={() => setType(t as PlanType)}
-              className={`px-3 py-1 rounded-full transition ${
-                type === t
-                  ? "bg-black text-white"
-                  : "bg-gray-100"
-              }`}
-            >
-              {t}
-            </button>
-            {i < 2 && <span>→</span>}
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="border rounded-xl px-3 py-2"
+            />
           </div>
-        ))}
-      </div>
 
-      {/* DATE + STATUS */}
-      <div className="flex items-center justify-between">
-        <input
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          className="border px-3 py-2 rounded"
-        />
+          <div className="mb-6">
+            <label className="text-sm text-gray-500 block mb-2">
+              Mission for today
+            </label>
+            <input
+              value={mission}
+              onChange={(e) => setMission(e.target.value)}
+              placeholder="What matters most today?"
+              className="w-full border rounded-2xl px-4 py-3"
+            />
+          </div>
 
-        {loading && <span className="text-sm">Loading...</span>}
-
-        {success && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-green-600 text-sm"
-          >
-            ✅ Plan saved successfully
-          </motion.div>
-        )}
-      </div>
-
-      {/* MAIN CARD */}
-      <div className="bg-white shadow rounded-2xl p-5 space-y-4">
-
-        <h2 className="text-lg font-medium">{titleMap[type]}</h2>
-
-        {/* FOCUS */}
-        <input
-          value={focus}
-          onChange={(e) => setFocus(e.target.value)}
-          placeholder={
-            type === "monthly"
-              ? "What matters this month?"
-              : type === "weekly"
-              ? "Top priorities this week"
-              : "Today's main focus"
-          }
-          className="w-full px-3 py-2 border rounded"
-        />
-
-        {/* ITEMS */}
-        <div className="space-y-2">
-          {items.length === 0 && (
-            <p className="text-sm text-gray-400">
-              No items yet. Start by adding one.
-            </p>
-          )}
-
-          {items.map((item) => (
-            <motion.div
-              key={item.id}
-              initial={{ opacity: 0, y: 5 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex items-center gap-2"
-            >
-              <button
-                onClick={() => toggleItem(item.id)}
-                className="text-lg"
+          <div className="space-y-3">
+            {tasks.map((task) => (
+              <motion.div
+                key={task.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="grid grid-cols-12 gap-2 p-3 border rounded-2xl"
               >
-                {item.done ? "✅" : "⬜"}
-              </button>
+                <button
+                  onClick={() => updateTask(task.id, "done", !task.done)}
+                  className="col-span-1"
+                >
+                  {task.done ? "✅" : "⬜"}
+                </button>
 
-              <input
-                value={item.title}
-                onChange={(e) =>
-                  updateItem(item.id, e.target.value)
-                }
-                className={`flex-1 px-2 py-1 border rounded ${
-                  item.done ? "line-through text-gray-400" : ""
-                }`}
-                placeholder={
-                  type === "daily"
-                    ? "Task"
-                    : "Goal / milestone"
-                }
-              />
-            </motion.div>
-          ))}
+                <input
+                  type="time"
+                  value={task.startTime}
+                  onChange={(e) => updateTask(task.id, "startTime", e.target.value)}
+                  className="col-span-2 border rounded-xl px-2 py-1"
+                />
+
+                <input
+                  type="time"
+                  value={task.endTime}
+                  onChange={(e) => updateTask(task.id, "endTime", e.target.value)}
+                  className="col-span-2 border rounded-xl px-2 py-1"
+                />
+
+                <input
+                  value={task.title}
+                  onChange={(e) => updateTask(task.id, "title", e.target.value)}
+                  placeholder="What are you doing in this block?"
+                  className="col-span-4 border rounded-xl px-3 py-1"
+                />
+
+                <select
+                  value={task.category}
+                  onChange={(e) => updateTask(task.id, "category", e.target.value)}
+                  className="col-span-3 border rounded-xl px-2 py-1"
+                >
+                  {Object.entries(categoryLabel).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </motion.div>
+            ))}
+          </div>
+
+          <div className="flex justify-between mt-6">
+            <button
+              onClick={addTask}
+              className="flex items-center gap-2 bg-gray-100 px-4 py-2 rounded-2xl"
+            >
+              <Plus className="w-4 h-4" />
+              Add Time Block
+            </button>
+
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="bg-black text-white px-6 py-2 rounded-2xl"
+            >
+              {saving ? "Saving..." : "Save Plan"}
+            </button>
+          </div>
         </div>
 
-        {/* ACTIONS */}
-        <div className="flex items-center justify-between">
-          <button
-            onClick={addItem}
-            className="text-sm px-3 py-1 rounded bg-gray-100"
-          >
-            + Add item
-          </button>
+        <div className="space-y-4">
+          <div className="bg-white border rounded-3xl p-5">
+            <Target className="w-5 h-5 mb-3" />
+            <p className="text-sm text-gray-500">Execution Score</p>
+            <p className="text-3xl font-bold mt-1">{totalCompleted}%</p>
+          </div>
 
-          <button
-            onClick={save}
-            disabled={saving}
-            className="px-5 py-2 rounded bg-black text-white"
-          >
-            {saving ? "Saving..." : "Save Plan"}
-          </button>
+          <div className="bg-white border rounded-3xl p-5">
+            <Clock3 className="w-5 h-5 mb-3" />
+            <p className="text-sm text-gray-500">Blocks Planned</p>
+            <p className="text-3xl font-bold mt-1">{tasks.length}</p>
+          </div>
+
+          <div className="bg-white border rounded-3xl p-5">
+            <CheckCircle2 className="w-5 h-5 mb-3" />
+            <p className="text-sm text-gray-500">Status</p>
+            <p className="font-medium mt-1">{loading ? "Syncing..." : "Ready"}</p>
+          </div>
         </div>
       </div>
-
-      {/* VIEW EXISTING */}
-      {plan && (
-        <div className="text-sm text-gray-500">
-          Last updated plan loaded ✔
-        </div>
-      )}
     </div>
   );
 }
